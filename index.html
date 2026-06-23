@@ -491,8 +491,8 @@ function closeCheckout() {
 }
 
 // ============ EMAIL ============
-// 使用 EmailJS 发送订单
-emailjs.init('YOUR_PUBLIC_KEY'); // 替换为你的 EmailJS Public Key
+// EmailJS 配置
+emailjs.init('C1nzh5iQ-W-9xdUGX');
 
 async function submitOrder() {
   const name = document.getElementById('customerName').value.trim();
@@ -504,29 +504,30 @@ async function submitOrder() {
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
-  btn.textContent = '发送中...';
+  btn.textContent = '📧 发送中...';
 
-  // 构建订单内容
-  let orderText = '【小羊专属点餐订单】\n\n';
-  orderText += `姓名：${name}\n电话：${phone}\n`;
-  if (note) orderText += `备注：${note}\n`;
-  orderText += '\n--- 订单明细 ---\n';
+  // 构建订单明细
+  let orderItems = '';
   let total = 0;
   cart.forEach(c => {
     const sub = c.price * c.qty;
     total += sub;
-    orderText += `[${c.brand}] ${c.name} ×${c.qty}  ¥${sub}\n`;
+    orderItems += `[${c.brand}] ${c.name} ×${c.qty}  ¥${sub}\n`;
   });
-  orderText += `\n合计：¥${total}\n`;
-  orderText += `\n时间：${new Date().toLocaleString()}`;
 
-  // 备用：复制到剪贴板 + 打开邮箱
+  const params = {
+    to_email: '2801484617@qq.com',
+    customer_name: name,
+    customer_phone: phone,
+    customer_note: note || '无',
+    order_items: orderItems,
+    total_price: '¥' + total,
+    order_time: new Date().toLocaleString(),
+  };
+
   try {
-    await navigator.clipboard.writeText(orderText);
-    showToast('✅ 订单已复制！请粘贴到邮件发送至 2801484617@qq.com', 'success');
-    setTimeout(() => {
-      window.open('mailto:2801484617@qq.com?subject=奶茶订单 - ' + name + '&body=' + encodeURIComponent(orderText));
-    }, 500);
+    await emailjs.send('service_keq8p9n', 'template_aorv2kb', params);
+    showToast('✅ 订单已发送！商家会尽快处理', 'success');
     cart = [];
     updateCart();
     closeCheckout();
@@ -534,7 +535,8 @@ async function submitOrder() {
     document.getElementById('customerPhone').value = '';
     document.getElementById('customerNote').value = '';
   } catch(e) {
-    showToast('请手动发送订单到 2801484617@qq.com', 'error');
+    console.error('EmailJS 错误:', e);
+    showToast('⚠️ 发送失败，请截图订单发给商家', 'error');
   }
 
   btn.disabled = false;
