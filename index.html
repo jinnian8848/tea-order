@@ -491,8 +491,19 @@ function closeCheckout() {
 }
 
 // ============ EMAIL ============
-// EmailJS 配置
-emailjs.init('C1nzh5iQ-W-9xdUGX');
+// EmailJS v4 配置
+const EMAILJS_PUBLIC_KEY = 'C1nzh5iQ-W-9xdUGX';
+const EMAILJS_SERVICE_ID = 'service_keq8p9n';
+const EMAILJS_TEMPLATE_ID = 'template_aorv2kb';
+
+(async function initEmailJS() {
+  try {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    console.log('EmailJS 初始化成功');
+  } catch(e) {
+    console.warn('EmailJS 初始化失败，将使用备用方案:', e.message);
+  }
+})();
 
 async function submitOrder() {
   const name = document.getElementById('customerName').value.trim();
@@ -516,7 +527,6 @@ async function submitOrder() {
   });
 
   const params = {
-    to_email: '2801484617@qq.com',
     customer_name: name,
     customer_phone: phone,
     customer_note: note || '无',
@@ -526,7 +536,8 @@ async function submitOrder() {
   };
 
   try {
-    await emailjs.send('service_keq8p9n', 'template_aorv2kb', params);
+    const response = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, params);
+    console.log('EmailJS 响应:', response.status, response.text);
     showToast('✅ 订单已发送！商家会尽快处理', 'success');
     cart = [];
     updateCart();
@@ -535,8 +546,15 @@ async function submitOrder() {
     document.getElementById('customerPhone').value = '';
     document.getElementById('customerNote').value = '';
   } catch(e) {
-    console.error('EmailJS 错误:', e);
-    showToast('⚠️ 发送失败，请截图订单发给商家', 'error');
+    console.error('EmailJS 错误详情:', e);
+    console.error('错误代码:', e.code || e.status);
+    console.error('错误信息:', e.message || e.text);
+    // 如果emailjs ID不正确(404)，说明template/service ID需要确认
+    if (e.status === 404 || (e.message && e.message.includes('404'))) {
+      showToast('⚠️ 邮件服务配置有误，请检查 EmailJS 后台的 Service ID 和 Template ID', 'error');
+    } else {
+      showToast('⚠️ 发送失败: ' + (e.text || e.message || '请检查邮箱配置'), 'error');
+    }
   }
 
   btn.disabled = false;
