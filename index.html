@@ -512,12 +512,13 @@ function submitOrder() {
   orderText += '\n合计：¥' + total;
   orderText += '\n时间：' + new Date().toLocaleString();
 
-  // 一键复制订单，然后打开QQ邮箱
+  // 一键复制订单，然后打开系统邮箱
   navigator.clipboard.writeText(orderText).then(function() {
-    showToast('✅ 订单已复制！即将打开QQ邮箱', 'success');
+    showToast('✅ 订单已复制！邮件已打开，粘贴内容后发送', 'success');
     setTimeout(function() {
-      window.open('https://mail.qq.com/cgi-bin/compose?to=2801484617@qq.com&subject=' + encodeURIComponent('小羊点餐-'+name+'的订单') + '&body=' + encodeURIComponent(orderText));
-    }, 800);
+      var mailto = 'mailto:2801484617@qq.com?subject=' + encodeURIComponent('小羊点餐-'+name+'的订单') + '&body=' + encodeURIComponent(orderText);
+      window.location.href = mailto;
+    }, 500);
     cart = [];
     updateCart();
     closeCheckout();
@@ -525,7 +526,7 @@ function submitOrder() {
     document.getElementById('customerPhone').value = '';
     document.getElementById('customerNote').value = '';
   }).catch(function() {
-    showToast('⚠️ 复制失败，请手动发送', 'error');
+    showToast('⚠️ 请截图订单发给商家', 'error');
   });
 }
 
