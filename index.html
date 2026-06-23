@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🐑 小羊专属点餐</title>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 :root {
   --bg: #FFF8F0;
@@ -490,22 +489,8 @@ function closeCheckout() {
   document.getElementById('checkoutModal').classList.remove('open');
 }
 
-// ============ EMAIL ============
-// EmailJS v4 配置
-const EMAILJS_PUBLIC_KEY = 'C1nzh5iQ-W-9xdUGX';
-const EMAILJS_SERVICE_ID = 'service_6n8wpxo';
-const EMAILJS_TEMPLATE_ID = 'template_fwg5ez2';
-
-(async function initEmailJS() {
-  try {
-    emailjs.init(EMAILJS_PUBLIC_KEY);
-    console.log('EmailJS 初始化成功');
-  } catch(e) {
-    console.warn('EmailJS 初始化失败，将使用备用方案:', e.message);
-  }
-})();
-
-async function submitOrder() {
+// ============ 提交订单 ============
+function submitOrder() {
   const name = document.getElementById('customerName').value.trim();
   const phone = document.getElementById('customerPhone').value.trim();
   const note = document.getElementById('customerNote').value.trim();
@@ -513,52 +498,35 @@ async function submitOrder() {
   if (!name || !phone) { showToast('请填写姓名和电话', 'error'); return; }
   if (!/^1\d{10}$/.test(phone)) { showToast('请填写正确的手机号', 'error'); return; }
 
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  btn.textContent = '📧 发送中...';
-
-  // 构建订单明细
-  let orderItems = '';
+  // 构建订单文本
+  let orderText = '【小羊专属点餐订单】\n\n';
+  orderText += '姓名：' + name + '\n电话：' + phone + '\n';
+  if (note) orderText += '备注：' + note + '\n';
+  orderText += '\n--- 订单明细 ---\n';
   let total = 0;
-  cart.forEach(c => {
-    const sub = c.price * c.qty;
+  cart.forEach(function(c) {
+    var sub = c.price * c.qty;
     total += sub;
-    orderItems += `[${c.brand}] ${c.name} ×${c.qty}  ¥${sub}\n`;
+    orderText += '[' + c.brand + '] ' + c.name + ' ×' + c.qty + '  ¥' + sub + '\n';
   });
+  orderText += '\n合计：¥' + total;
+  orderText += '\n时间：' + new Date().toLocaleString();
 
-  const params = {
-    customer_name: name,
-    customer_phone: phone,
-    customer_note: note || '无',
-    order_items: orderItems,
-    total_price: '¥' + total,
-    order_time: new Date().toLocaleString(),
-  };
-
-  try {
-    const response = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, params);
-    console.log('EmailJS 响应:', response.status, response.text);
-    showToast('✅ 订单已发送！商家会尽快处理', 'success');
+  // 一键复制订单，然后打开QQ邮箱
+  navigator.clipboard.writeText(orderText).then(function() {
+    showToast('✅ 订单已复制！即将打开QQ邮箱', 'success');
+    setTimeout(function() {
+      window.open('https://mail.qq.com/cgi-bin/compose?to=2801484617@qq.com&subject=' + encodeURIComponent('小羊点餐-'+name+'的订单') + '&body=' + encodeURIComponent(orderText));
+    }, 800);
     cart = [];
     updateCart();
     closeCheckout();
     document.getElementById('customerName').value = '';
     document.getElementById('customerPhone').value = '';
     document.getElementById('customerNote').value = '';
-  } catch(e) {
-    console.error('EmailJS 错误详情:', e);
-    console.error('错误代码:', e.code || e.status);
-    console.error('错误信息:', e.message || e.text);
-    // 如果emailjs ID不正确(404)，说明template/service ID需要确认
-    if (e.status === 404 || (e.message && e.message.includes('404'))) {
-      showToast('⚠️ 邮件服务配置有误，请检查 EmailJS 后台的 Service ID 和 Template ID', 'error');
-    } else {
-      showToast('⚠️ 发送失败: ' + (e.text || e.message || '请检查邮箱配置'), 'error');
-    }
-  }
-
-  btn.disabled = false;
-  btn.textContent = '📧 提交订单';
+  }).catch(function() {
+    showToast('⚠️ 复制失败，请手动发送', 'error');
+  });
 }
 
 // ============ TOAST ============
