@@ -387,8 +387,8 @@ BRANDS.forEach((brand, idx) => {
             <div class="item-name">${item.n}${item.hot ? '<span class="item-hot">爆款</span>' : ''}</div>
             <div class="item-desc">${item.d}</div>
             <div class="item-price-row">
-              <span class="item-price"><span class="yen">¥</span>${item.p}</span>
-              <button class="item-add" onclick="event.stopPropagation(); addToCart('${brand.name}', '${item.n}', ${item.p})">+</button>
+              <span></span>
+              <button class="item-add" onclick="event.stopPropagation(); addToCart('${brand.name}', '${item.n}')">+</button>
             </div>
           </div>
         </div>`;
@@ -406,10 +406,10 @@ function switchBrand(idx) {
 }
 
 // ============ CART ============
-function addToCart(brand, name, price) {
+function addToCart(brand, name) {
   const key = brand + '|' + name;
   const existing = cart.find(c => c.key === key);
-  if (existing) { existing.qty++; } else { cart.push({ key, brand, name, price, qty: 1 }); }
+  if (existing) { existing.qty++; } else { cart.push({ key, brand, name, qty: 1 }); }
   updateCart();
   showToast(`已添加 ${name}`, 'success');
 }
@@ -433,8 +433,8 @@ function updateCart() {
   countEl.textContent = count;
   countEl.style.display = count > 0 ? 'flex' : 'none';
 
-  const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  document.getElementById('cartTotal').textContent = '¥' + total;
+  const total = cart.reduce((s, c) => s + c.qty, 0);
+  document.getElementById('cartTotal').textContent = total + ' 杯';
 
   const itemsEl = document.getElementById('cartItems');
   if (cart.length === 0) {
@@ -451,7 +451,7 @@ function updateCart() {
           <span>${c.qty}</span>
           <button onclick="changeQty('${c.key}', 1)">+</button>
         </div>
-        <div class="cart-item-price">¥${(c.price * c.qty).toFixed(0)}</div>
+        <div class="cart-item-price" style="color:var(--sub);font-size:12px">×${c.qty}杯</div>
         <button class="cart-item-del" onclick="removeFromCart('${c.key}')">🗑</button>
       </div>
     `).join('');
@@ -472,11 +472,10 @@ function openCheckout() {
   let html = '';
   let total = 0;
   cart.forEach(c => {
-    const sub = c.price * c.qty;
-    total += sub;
-    html += `<div class="line"><span>[${c.brand}] ${c.name} ×${c.qty}</span><span>¥${sub}</span></div>`;
+    total += c.qty;
+    html += `<div class="line"><span>[${c.brand}] ${c.name} ×${c.qty}</span><span>×${c.qty}杯</span></div>`;
   });
-  html += `<div class="line total-line"><span>合计</span><span>¥${total}</span></div>`;
+  html += `<div class="line total-line"><span>合计</span><span>共 ${total} 杯</span></div>`;
   summary.innerHTML = html;
   toggleCart();
 }
@@ -499,9 +498,8 @@ function submitOrder() {
   let orderItems = '';
   let total = 0;
   cart.forEach(function(c) {
-    var sub = c.price * c.qty;
-    total += sub;
-    orderItems += '[' + c.brand + '] ' + c.name + ' ×' + c.qty + '  ¥' + sub + '\n';
+    total += c.qty;
+    orderItems += '[' + c.brand + '] ' + c.name + ' ×' + c.qty + ' 杯\n';
   });
 
   fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -516,7 +514,7 @@ function submitOrder() {
         customer_phone: '未填写',
         customer_note: note || '无',
         order_items: orderItems,
-        total_price: '¥' + total,
+        total_price: '共 ' + total + ' 杯',
         order_time: new Date().toLocaleString(),
       }
     })
