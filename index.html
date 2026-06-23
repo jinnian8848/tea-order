@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🐑 小羊专属点餐</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 :root {
   --bg: #FFF8F0;
@@ -141,6 +142,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
   <div class="modal">
     <h2>📋 确认订单</h2>
     <p class="dim">确认无误后提交，订单将发送到商家邮箱</p>
+    <label>👤 姓名</label>
+    <input type="text" id="customerName" placeholder="请输入您的姓名">
+    <label>📱 电话</label>
+    <input type="tel" id="customerPhone" placeholder="请输入手机号">
     <label>📝 备注</label>
     <textarea id="customerNote" placeholder="甜度、冰量等特殊要求..."></textarea>
     <div class="order-summary" id="orderSummary"></div>
@@ -486,37 +491,52 @@ function closeCheckout() {
 }
 
 // ============ 提交订单 ============
+emailjs.init('C1nzh5iQ-W-9xdUGX');
+
 function submitOrder() {
+  const name = document.getElementById('customerName').value.trim();
+  const phone = document.getElementById('customerPhone').value.trim();
   const note = document.getElementById('customerNote').value.trim();
 
+  if (!name) { showToast('请填写姓名', 'error'); return; }
+  if (!phone) { showToast('请填写电话', 'error'); return; }
+  if (!/^1\d{10}$/.test(phone)) { showToast('手机号格式错误', 'error'); return; }
   if (cart.length === 0) { showToast('购物车是空的', 'error'); return; }
 
-  // 构建订单文本
-  let orderText = '【小羊专属点餐订单】\n\n';
-  if (note) orderText += '备注：' + note + '\n';
-  orderText += '--- 订单明细 ---\n';
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '📧 发送中...';
+
+  let orderItems = '';
   let total = 0;
   cart.forEach(function(c) {
     var sub = c.price * c.qty;
     total += sub;
-    orderText += '[' + c.brand + '] ' + c.name + ' ×' + c.qty + '  ¥' + sub + '\n';
+    orderItems += '[' + c.brand + '] ' + c.name + ' ×' + c.qty + '  ¥' + sub + '\n';
   });
-  orderText += '\n合计：¥' + total;
-  orderText += '\n时间：' + new Date().toLocaleString();
 
-  // 一键复制订单，然后打开系统邮箱
-  navigator.clipboard.writeText(orderText).then(function() {
-    showToast('✅ 订单已复制！邮件已打开，粘贴后发送', 'success');
-    setTimeout(function() {
-      var mailto = 'mailto:2801484617@qq.com?subject=' + encodeURIComponent('小羊点餐订单') + '&body=' + encodeURIComponent(orderText);
-      window.location.href = mailto;
-    }, 500);
+  emailjs.send('service_5260djm', 'template_fwg5ez2', {
+    customer_name: name,
+    customer_phone: phone,
+    customer_note: note || '无',
+    order_items: orderItems,
+    total_price: '¥' + total,
+    order_time: new Date().toLocaleString(),
+  }).then(function() {
+    showToast('✅ 订单已发送！商家会尽快处理', 'success');
     cart = [];
     updateCart();
     closeCheckout();
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerPhone').value = '';
     document.getElementById('customerNote').value = '';
-  }).catch(function() {
-    showToast('⚠️ 请截图订单发给商家', 'error');
+    btn.disabled = false;
+    btn.textContent = '📧 提交订单';
+  }).catch(function(e) {
+    console.error('发送失败:', e);
+    showToast('⚠️ 发送失败: ' + (e.text || e.message || '未知错误'), 'error');
+    btn.disabled = false;
+    btn.textContent = '📧 提交订单';
   });
 }
 
