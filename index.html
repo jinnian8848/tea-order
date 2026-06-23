@@ -140,11 +140,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
 <div class="modal-bg" id="checkoutModal">
   <div class="modal">
     <h2>📋 确认订单</h2>
-    <p class="dim">请填写信息，订单将发送到商家邮箱</p>
-    <label>👤 姓名</label>
-    <input type="text" id="customerName" placeholder="请输入您的姓名">
-    <label>📱 电话</label>
-    <input type="tel" id="customerPhone" placeholder="请输入手机号">
+    <p class="dim">确认无误后提交，订单将发送到商家邮箱</p>
     <label>📝 备注</label>
     <textarea id="customerNote" placeholder="甜度、冰量等特殊要求..."></textarea>
     <div class="order-summary" id="orderSummary"></div>
@@ -491,18 +487,14 @@ function closeCheckout() {
 
 // ============ 提交订单 ============
 function submitOrder() {
-  const name = document.getElementById('customerName').value.trim();
-  const phone = document.getElementById('customerPhone').value.trim();
   const note = document.getElementById('customerNote').value.trim();
 
-  if (!name || !phone) { showToast('请填写姓名和电话', 'error'); return; }
-  if (!/^1\d{10}$/.test(phone)) { showToast('请填写正确的手机号', 'error'); return; }
+  if (cart.length === 0) { showToast('购物车是空的', 'error'); return; }
 
   // 构建订单文本
   let orderText = '【小羊专属点餐订单】\n\n';
-  orderText += '姓名：' + name + '\n电话：' + phone + '\n';
   if (note) orderText += '备注：' + note + '\n';
-  orderText += '\n--- 订单明细 ---\n';
+  orderText += '--- 订单明细 ---\n';
   let total = 0;
   cart.forEach(function(c) {
     var sub = c.price * c.qty;
@@ -514,16 +506,14 @@ function submitOrder() {
 
   // 一键复制订单，然后打开系统邮箱
   navigator.clipboard.writeText(orderText).then(function() {
-    showToast('✅ 订单已复制！邮件已打开，粘贴内容后发送', 'success');
+    showToast('✅ 订单已复制！邮件已打开，粘贴后发送', 'success');
     setTimeout(function() {
-      var mailto = 'mailto:2801484617@qq.com?subject=' + encodeURIComponent('小羊点餐-'+name+'的订单') + '&body=' + encodeURIComponent(orderText);
+      var mailto = 'mailto:2801484617@qq.com?subject=' + encodeURIComponent('小羊点餐订单') + '&body=' + encodeURIComponent(orderText);
       window.location.href = mailto;
     }, 500);
     cart = [];
     updateCart();
     closeCheckout();
-    document.getElementById('customerName').value = '';
-    document.getElementById('customerPhone').value = '';
     document.getElementById('customerNote').value = '';
   }).catch(function() {
     showToast('⚠️ 请截图订单发给商家', 'error');
