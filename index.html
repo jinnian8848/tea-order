@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🐑 小羊专属点餐</title>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 :root {
   --bg: #FFF8F0;
@@ -491,8 +490,7 @@ function closeCheckout() {
 }
 
 // ============ 提交订单 ============
-emailjs.init('C1nzh5iQ-W-9xdUGX');
-
+// 直接调用 EmailJS REST API，不依赖CDN
 function submitOrder() {
   const name = document.getElementById('customerName').value.trim();
   const phone = document.getElementById('customerPhone').value.trim();
@@ -515,26 +513,38 @@ function submitOrder() {
     orderItems += '[' + c.brand + '] ' + c.name + ' ×' + c.qty + '  ¥' + sub + '\n';
   });
 
-  emailjs.send('service_5260djm', 'template_fwg5ez2', {
-    customer_name: name,
-    customer_phone: phone,
-    customer_note: note || '无',
-    order_items: orderItems,
-    total_price: '¥' + total,
-    order_time: new Date().toLocaleString(),
-  }).then(function() {
-    showToast('✅ 订单已发送！商家会尽快处理', 'success');
-    cart = [];
-    updateCart();
-    closeCheckout();
-    document.getElementById('customerName').value = '';
-    document.getElementById('customerPhone').value = '';
-    document.getElementById('customerNote').value = '';
-    btn.disabled = false;
-    btn.textContent = '📧 提交订单';
+  fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: 'service_5260djm',
+      template_id: 'template_fwg5ez2',
+      user_id: 'C1nzh5iQ-W-9xdUGX',
+      template_params: {
+        customer_name: name,
+        customer_phone: phone,
+        customer_note: note || '无',
+        order_items: orderItems,
+        total_price: '¥' + total,
+        order_time: new Date().toLocaleString(),
+      }
+    })
+  }).then(function(res) {
+    if (res.ok) {
+      showToast('✅ 订单已发送！商家会尽快处理', 'success');
+      cart = [];
+      updateCart();
+      closeCheckout();
+      document.getElementById('customerName').value = '';
+      document.getElementById('customerPhone').value = '';
+      document.getElementById('customerNote').value = '';
+    } else {
+      return res.json().then(function(d) { throw new Error(d.message || '发送失败'); });
+    }
   }).catch(function(e) {
     console.error('发送失败:', e);
-    showToast('⚠️ 发送失败: ' + (e.text || e.message || '未知错误'), 'error');
+    showToast('⚠️ 发送失败: ' + e.message, 'error');
+  }).finally(function() {
     btn.disabled = false;
     btn.textContent = '📧 提交订单';
   });
