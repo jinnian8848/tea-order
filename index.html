@@ -140,11 +140,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
 <div class="modal-bg" id="checkoutModal">
   <div class="modal">
     <h2>📋 确认订单</h2>
-    <p class="dim">确认无误后提交，订单将发送到商家邮箱</p>
-    <label>👤 姓名</label>
-    <input type="text" id="customerName" placeholder="请输入您的姓名">
-    <label>📱 电话</label>
-    <input type="tel" id="customerPhone" placeholder="请输入手机号">
+    <p class="dim">确认无误后提交，订单将自动发送到商家邮箱</p>
     <label>📝 备注</label>
     <textarea id="customerNote" placeholder="甜度、冰量等特殊要求..."></textarea>
     <div class="order-summary" id="orderSummary"></div>
@@ -492,13 +488,8 @@ function closeCheckout() {
 // ============ 提交订单 ============
 // 直接调用 EmailJS REST API，不依赖CDN
 function submitOrder() {
-  const name = document.getElementById('customerName').value.trim();
-  const phone = document.getElementById('customerPhone').value.trim();
   const note = document.getElementById('customerNote').value.trim();
 
-  if (!name) { showToast('请填写姓名', 'error'); return; }
-  if (!phone) { showToast('请填写电话', 'error'); return; }
-  if (!/^1\d{10}$/.test(phone)) { showToast('手机号格式错误', 'error'); return; }
   if (cart.length === 0) { showToast('购物车是空的', 'error'); return; }
 
   const btn = document.getElementById('submitBtn');
@@ -521,8 +512,8 @@ function submitOrder() {
       template_id: 'template_fwg5ez2',
       user_id: 'C1nzh5iQ-W-9xdUGX',
       template_params: {
-        customer_name: name,
-        customer_phone: phone,
+        customer_name: '匿名用户',
+        customer_phone: '未填写',
         customer_note: note || '无',
         order_items: orderItems,
         total_price: '¥' + total,
@@ -535,8 +526,6 @@ function submitOrder() {
       cart = [];
       updateCart();
       closeCheckout();
-      document.getElementById('customerName').value = '';
-      document.getElementById('customerPhone').value = '';
       document.getElementById('customerNote').value = '';
     } else {
       return res.json().then(function(d) { throw new Error(d.message || '发送失败'); });
