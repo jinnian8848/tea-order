@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐑 小羊专属点餐</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+:root {
+  --bg: #FFF8F0;
+  --card: #FFFFFF;
+  --text: #2D1810;
+  --sub: #8B6F64;
+  --accent: #E8784A;
+  --accent2: #4A90A4;
+  --border: #F0E0D6;
+  --tag-bg: #FFF0E8;
+  --shadow: 0 2px 12px rgba(0,0,0,.06);
+  --radius: 14px;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); min-height:100vh; }
+/* Header */
+.header { background: #fff; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.header-inner { max-width:1200px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; }
+.logo { font-size:22px; font-weight:800; }
+.logo span { color:var(--accent); }
+.cart-btn { background:var(--accent); color:#fff; border:none; padding:10px 20px; border-radius:24px; font-size:15px; cursor:pointer; font-weight:600; position:relative; transition:.2s; }
+.cart-btn:hover { background:#d4663a; }
+.cart-count { position:absolute; top:-6px; right:-6px; background:#c0392b; color:#fff; font-size:11px; min-width:20px; height:20px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+/* Brand Tabs */
+.brand-nav { background:#fff; border-bottom:1px solid var(--border); position:sticky; top:61px; z-index:99; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch; }
+.brand-nav-inner { max-width:1200px; margin:0 auto; padding:0 20px; display:flex; gap:4px; }
+.brand-tab { padding:12px 18px; border:none; background:none; font-size:14px; cursor:pointer; border-bottom:3px solid transparent; transition:.2s; color:var(--sub); font-weight:500; white-space:nowrap; }
+.brand-tab.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:700; }
+.brand-tab:hover { color:var(--accent); }
+/* Main */
+.main { max-width:1200px; margin:0 auto; padding:20px; display:flex; gap:24px; }
+.menu-area { flex:1; min-width:0; }
+.brand-section { display:none; }
+.brand-section.active { display:block; }
+.brand-title { font-size:24px; font-weight:800; margin-bottom:4px; }
+.brand-desc { color:var(--sub); margin-bottom:20px; font-size:14px; }
+/* Category */
+.cat-title { font-size:17px; font-weight:700; margin:24px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--accent); display:inline-block; }
+/* Item Grid */
+.item-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+.item-card { background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); display:flex; gap:12px; align-items:center; transition:.2s; cursor:pointer; }
+.item-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
+.item-emoji { font-size:36px; flex-shrink:0; width:52px; text-align:center; }
+.item-info { flex:1; min-width:0; }
+.item-name { font-weight:700; font-size:15px; margin-bottom:2px; }
+.item-desc { font-size:12px; color:var(--sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.item-price-row { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
+.item-price { font-size:18px; font-weight:800; color:var(--accent); }
+.item-price .yen { font-size:13px; }
+.item-add { background:var(--accent); color:#fff; border:none; width:32px; height:32px; border-radius:50%; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s; flex-shrink:0; line-height:1; }
+.item-add:hover { background:#d4663a; transform:scale(1.1); }
+.item-hot { display:inline-block; background:#FFE0D0; color:#E8784A; font-size:11px; padding:2px 8px; border-radius:10px; margin-left:6px; font-weight:600; }
+/* Cart Sidebar */
+.cart-bg { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:200; display:none; }
+.cart-bg.open { display:block; }
+.cart-sidebar { position:fixed; right:0; top:0; bottom:0; width:400px; max-width:100vw; background:#fff; z-index:201; box-shadow:-4px 0 24px rgba(0,0,0,.12); display:flex; flex-direction:column; transform:translateX(100%); transition:.3s; }
+.cart-sidebar.open { transform:translateX(0); }
+.cart-head { padding:20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.cart-head h3 { font-size:18px; }
+.cart-close { background:none; border:none; font-size:24px; cursor:pointer; color:var(--sub); }
+.cart-items { flex:1; overflow-y:auto; padding:16px; }
+.cart-empty { text-align:center; padding:60px 20px; color:var(--sub); }
+.cart-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+.cart-item-name { flex:1; font-weight:600; font-size:14px; }
+.cart-item-brand { font-size:11px; color:var(--sub); }
+.cart-qty { display:flex; align-items:center; gap:6px; }
+.cart-qty button { width:26px; height:26px; border-radius:50%; border:1px solid var(--border); background:#fff; cursor:pointer; font-size:16px; line-height:1; }
+.cart-qty span { min-width:24px; text-align:center; font-weight:600; }
+.cart-item-price { font-weight:700; color:var(--accent); min-width:60px; text-align:right; }
+.cart-item-del { background:none; border:none; color:#ccc; cursor:pointer; font-size:16px; }
+.cart-foot { padding:16px 20px; border-top:1px solid var(--border); }
+.cart-total { display:flex; justify-content:space-between; font-size:18px; font-weight:800; margin-bottom:12px; }
+.cart-checkout { width:100%; padding:14px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius); font-size:16px; font-weight:700; cursor:pointer; transition:.2s; }
+.cart-checkout:hover { background:#d4663a; }
+/* Modal */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:300; display:none; align-items:center; justify-content:center; }
+.modal-bg.open { display:flex; }
+.modal { background:#fff; border-radius:var(--radius); padding:30px; max-width:460px; width:90%; max-height:85vh; overflow-y:auto; }
+.modal h2 { margin-bottom:6px; }
+.modal p.dim { color:var(--sub); font-size:13px; margin-bottom:20px; }
+.modal label { display:block; font-weight:600; margin:12px 0 4px; font-size:14px; }
+.modal input, .modal textarea { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:14px; font-family:inherit; }
+.modal textarea { height:80px; resize:vertical; }
+.modal .order-summary { background:var(--bg); border-radius:12px; padding:14px; margin:16px 0; font-size:13px; max-height:150px; overflow-y:auto; }
+.modal .order-summary .line { display:flex; justify-content:space-between; padding:3px 0; }
+.modal .order-summary .total-line { font-weight:800; border-top:1px solid var(--border); margin-top:6px; padding-top:6px; font-size:15px; }
+.modal .btn-row { display:flex; gap:10px; margin-top:20px; }
+.btn-submit { flex:1; padding:14px; background:var(--accent); color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
+.btn-submit:disabled { opacity:.5; cursor:not-allowed; }
+.btn-cancel { flex:1; padding:14px; background:#f0f0f0; color:#666; border:none; border-radius:12px; font-size:16px; cursor:pointer; }
+.toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); padding:14px 28px; border-radius:30px; font-weight:600; z-index:999; animation:slideDown .3s; }
+.toast.success { background:#4CAF50; color:#fff; }
+.toast.error { background:#F44336; color:#fff; }
+@keyframes slideDown { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+@media (max-width:768px) {
+  .main { flex-direction:column; }
+  .cart-sidebar { width:100%; }
+  .item-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="logo">🐑 小羊<span>·专属点餐</span></div>
+    <button class="cart-btn" onclick="toggleCart()">🛒 购物车 <span class="cart-count" id="cartCount" style="display:none">0</span></button>
+  </div>
+</div>
+
+<nav class="brand-nav" id="brandNav">
+  <div class="brand-nav-inner"></div>
+</nav>
+
+<div class="main">
+  <div class="menu-area" id="menuArea"></div>
+</div>
+
+<!-- Cart Overlay -->
+<div class="cart-bg" id="cartBg" onclick="toggleCart()"></div>
+<div class="cart-sidebar" id="cartSidebar">
+  <div class="cart-head">
+    <h3>🛒 购物车</h3>
+    <button class="cart-close" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems"><div class="cart-empty">购物车是空的，快去点单吧~</div></div>
+  <div class="cart-foot">
+    <div class="cart-total"><span>合计</span><span id="cartTotal">¥0</span></div>
+    <button class="cart-checkout" onclick="openCheckout()">去结算</button>
+  </div>
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal-bg" id="checkoutModal">
+  <div class="modal">
+    <h2>📋 确认订单</h2>
+    <p class="dim">请填写信息，订单将发送到商家邮箱</p>
+    <label>👤 姓名</label>
+    <input type="text" id="customerName" placeholder="请输入您的姓名">
+    <label>📱 电话</label>
+    <input type="tel" id="customerPhone" placeholder="请输入手机号">
+    <label>📝 备注</label>
+    <textarea id="customerNote" placeholder="甜度、冰量等特殊要求..."></textarea>
+    <div class="order-summary" id="orderSummary"></div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeCheckout()">再想想</button>
+      <button class="btn-submit" id="submitBtn" onclick="submitOrder()">📧 提交订单</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+// ============ MENU DATA ============
+const BRANDS = [
+  {
+    id: 'guming', name: '古茗', emoji: '🍊', color: '#E8784A',
+    desc: '鲜果茶专门店，超A葡萄、布蕾脆脆奶芙必喝',
+    categories: [
+      { name: '🔥 爆款必喝', items: [
+        { n:'超A芝士葡萄', p:18, d:'葡萄果肉+芝士奶盖+茉莉茶底', e:'🍇', hot:true },
+        { n:'布蕾脆脆奶芙', p:16, d:'布蕾+奶芙+碧根果碎，经典招牌', e:'🍮', hot:true },
+        { n:'云岭茉莉白', p:14, d:'茉莉花茶+鲜牛乳，清新淡雅', e:'🌸', hot:true },
+        { n:'杨枝甘露(轻盈版)', p:15, d:'芒果+西柚+椰奶，轻盈不腻', e:'🥭' },
+        { n:'手剥·粒粒大橘', p:17, d:'满满橘子果肉，低卡清爽', e:'🍊' },
+      ]},
+      { name: '🍵 原叶鲜奶茶', items: [
+        { n:'大叔奶茶', p:12, d:'经典古早味，加珍珠一绝', e:'🧋' },
+        { n:'乌龙烤奶', p:10, d:'碳焙乌龙+牛乳，茶香浓郁', e:'🍂' },
+        { n:'红茶烤奶', p:10, d:'锡兰红茶+牛乳，温润醇厚', e:'☕' },
+        { n:'芙香奶绿', p:10, d:'茉莉绿茶+牛乳，花香四溢', e:'🌿' },
+        { n:'四季春茶', p:10, d:'台湾四季春，清爽回甘', e:'🍃' },
+      ]},
+      { name: '🍓 鲜果茶', items: [
+        { n:'百香双响炮', p:12, d:'百香果+椰果+珍珠，三重口感', e:'💥' },
+        { n:'满杯水果茶', p:21, d:'多种鲜果，超大杯满足', e:'🍹' },
+        { n:'一颗柠檬红', p:6, d:'整颗柠檬+红茶，清爽解暑', e:'🍋' },
+        { n:'柚见水果茶', p:12, d:'柚子+多种水果，维C满满', e:'🍊' },
+        { n:'芝士芒芒', p:17, d:'芒果冰沙+芝士奶盖', e:'🥭' },
+      ]},
+      { name: '🥤 经典奶茶', items: [
+        { n:'原味奶茶', p:8, d:'经典原味，简单好喝', e:'🧋' },
+        { n:'芋泥燕麦奶茶', p:15, d:'软糯芋泥+Q弹燕麦', e:'🍠' },
+        { n:'牛奶三拼', p:11, d:'珍珠+布丁+仙草，满满小料', e:'🥛' },
+        { n:'烧仙草', p:12, d:'古法烧仙草，清凉降火', e:'🌿' },
+        { n:'黑糖鲜奶', p:15, d:'手炒黑糖+鲜牛乳，焦香浓郁', e:'🍯' },
+      ]},
+    ]
+  },
+  {
+    id: 'hssay', name: '沪上阿姨', emoji: '🧋', color: '#F5A623',
+    desc: '五谷茶饮开创者，血糯米奶茶yyds',
+    categories: [
+      { name: '🔥 招牌必喝', items: [
+        { n:'血糯米奶茶', p:9, d:'五谷杂粮+奶茶，沪上阿姨灵魂产品', e:'🍚', hot:true },
+        { n:'绿豆牛乳冰', p:16, d:'绿豆沙+鲜牛乳，夏日消暑神器', e:'🥛', hot:true },
+        { n:'杨枝甘露', p:20, d:'芒果+西柚+椰浆，用料扎实', e:'🥭', hot:true },
+        { n:'厚芋泥波波奶茶', p:16, d:'超厚芋泥+黑糖波波，口感满分', e:'🍠' },
+        { n:'好大一桶水果茶', p:22, d:'1L超大杯，水果满到溢出来', e:'🍹' },
+      ]},
+      { name: '🍵 轻乳茶', items: [
+        { n:'茉莉香奶绿', p:7, d:'茉莉花茶+鲜牛乳，轻负担', e:'🌸' },
+        { n:'波波奶茶', p:12, d:'黑糖波波+奶茶，嚼劲十足', e:'🧋' },
+        { n:'仙仙青提柠檬', p:15, d:'阳光青提+柠檬，维C爆炸', e:'🍇' },
+        { n:'桃桃蜜柚', p:17, d:'水蜜桃+柚子，果香四溢', e:'🍑' },
+      ]},
+      { name: '🍉 鲜果茶', items: [
+        { n:'西瓜椰椰', p:15, d:'西瓜+椰奶，清甜解暑', e:'🍉' },
+        { n:'超级莓莓', p:18, d:'草莓+蓝莓+树莓，莓果三重奏', e:'🍓' },
+        { n:'满杯百香果', p:14, d:'百香果+绿茶，酸甜爽口', e:'💛' },
+      ]},
+    ]
+  },
+  {
+    id: 'chabaidao', name: '茶百道', emoji: '🐼', color: '#4A90A4',
+    desc: '四川走出的茶饮品牌，豆乳玉麒麟一绝',
+    categories: [
+      { name: '🔥 爆款必喝', items: [
+        { n:'豆乳玉麒麟', p:17, d:'豆乳奶盖+玉麒麟茶底，豆香茶香', e:'🥜', hot:true },
+        { n:'杨枝甘露', p:21, d:'加浓版杨枝甘露，芒果超多', e:'🥭', hot:true },
+        { n:'茉莉奶绿', p:13, d:'茉莉花茶+鲜奶，清爽好喝', e:'🌸', hot:true },
+        { n:'豆乳米麻薯', p:21, d:'豆乳+米麻薯，双重软糯', e:'🍡' },
+        { n:'西瓜啵啵', p:17, d:'西瓜汁+脆啵啵，夏日必备', e:'🍉' },
+      ]},
+      { name: '🍵 经典奶茶', items: [
+        { n:'招牌芋圆奶茶', p:16, d:'手工芋圆+奶茶，Q弹有嚼劲', e:'🍠' },
+        { n:'铁观音奶冻', p:15, d:'铁观音茶底+奶冻，茶香醇厚', e:'🍂' },
+        { n:'黄金椰椰乌龙', p:15, d:'椰奶+乌龙茶，热带风情', e:'🥥' },
+        { n:'桂花酒酿奶绿', p:12, d:'桂花+酒酿+奶绿，香甜馥郁', e:'🌼' },
+      ]},
+      { name: '🍓 鲜果系列', items: [
+        { n:'葡萄冻冻', p:15, d:'葡萄果肉+冻冻，清爽Q弹', e:'🍇' },
+        { n:'草莓奶冻', p:16, d:'草莓+鲜奶冻，少女心满满', e:'🍓' },
+        { n:'芒芒生打椰', p:18, d:'芒果+生椰乳，热带浓郁', e:'🥥' },
+        { n:'超级杯水果茶', p:22, d:'1000ml超大杯，水果盛宴', e:'🍹' },
+      ]},
+    ]
+  },
+  {
+    id: 'yidiandian', name: '一点点', emoji: '🟢', color: '#4CAF50',
+    desc: '台湾老牌茶饮，波霸奶茶是几代人的记忆',
+    categories: [
+      { name: '🔥 必点经典', items: [
+        { n:'波霸奶茶', p:13, d:'大颗波霸+奶茶，永远的经典', e:'🧋', hot:true },
+        { n:'冰激凌红茶', p:13, d:'红茶+冰激凌球，绝妙搭配', e:'🍦', hot:true },
+        { n:'四季奶青', p:12, d:'四季春茶+鲜奶，清爽回甘', e:'🍃', hot:true },
+        { n:'红茶玛奇朵', p:17, d:'红茶+奶盖，奶香茶香交融', e:'☕' },
+        { n:'养乐多绿', p:21, d:'绿茶+养乐多，酸甜清爽', e:'🍏' },
+      ]},
+      { name: '🍵 找好茶', items: [
+        { n:'四季春茶', p:9, d:'纯茶低卡，仅120大卡', e:'🍃' },
+        { n:'葡萄柚绿', p:20, d:'葡萄柚+绿茶，清爽解腻', e:'🍊' },
+        { n:'金桔柠檬', p:15, d:'金桔+柠檬，维C满满', e:'🍋' },
+        { n:'百香三重奏', p:16, d:'百香果+珍珠+椰果+波霸', e:'💛' },
+      ]},
+      { name: '🥛 找奶茶', items: [
+        { n:'波霸奶绿', p:15, d:'波霸+茉莉奶绿', e:'🌿' },
+        { n:'乌龙奶茶', p:15, d:'碳焙乌龙+鲜奶', e:'🍂' },
+        { n:'焦糖奶茶', p:20, d:'焦糖+奶茶，甜蜜浓郁', e:'🍯' },
+        { n:'可可芭蕾', p:14, d:'可可+鲜奶，巧克力控最爱', e:'🍫' },
+      ]},
+    ]
+  },
+  {
+    id: 'bawangchaji', name: '霸王茶姬', emoji: '🐉', color: '#C0392B',
+    desc: '东方新茶饮，原叶鲜奶茶，健康轻负担',
+    categories: [
+      { name: '🔥 必喝之选', items: [
+        { n:'伯牙绝弦', p:16, d:'茉莉雪芽+鲜牛乳，清爽回甘', e:'🎵', hot:true },
+        { n:'万里木兰', p:18, d:'大红袍+鲜牛乳，岩韵醇厚', e:'🏯', hot:true },
+        { n:'桂馥兰香', p:16, d:'桂花乌龙+鲜牛乳，馥郁芬芳', e:'🌸', hot:true },
+        { n:'花田乌龙', p:15, d:'蜜桃乌龙+鲜牛乳，果香茶香', e:'🍑' },
+        { n:'春日桃桃', p:15, d:'白桃乌龙+鲜牛乳，春日限定感', e:'🌸' },
+      ]},
+      { name: '🍵 原叶鲜奶茶', items: [
+        { n:'青青糯山', p:15, d:'糯米香+绿茶，独特米香', e:'🌾' },
+        { n:'白雾红尘', p:17, d:'红茶+鲜牛乳，经典醇厚', e:'☕' },
+        { n:'醒时春山', p:15, d:'龙井绿茶+鲜牛乳，春意盎然', e:'🍃' },
+        { n:'山野栀子', p:16, d:'栀子花+绿茶，花香清新', e:'🌿' },
+        { n:'去云南·玫瑰普洱', p:18, d:'普洱+玫瑰，云南风情', e:'🌹' },
+      ]},
+    ]
+  },
+  {
+    id: 'chayan', name: '茶颜悦色', emoji: '🏯', color: '#8B4513',
+    desc: '长沙名片，中国风茶饮，幽兰拿铁封神',
+    categories: [
+      { name: '🏆 忌廉系列(奶油顶)', items: [
+        { n:'幽兰拿铁', p:18, d:'锡兰红茶+奶油顶+碧根果碎，永远的神', e:'🏆', hot:true },
+        { n:'人间烟火', p:16, d:'武夷岩茶+奶油顶+开心果碎，茶味浓郁', e:'🎆', hot:true },
+        { n:'三季虫', p:17, d:'高山红茶+奶油顶+碧根果，比幽兰茶味更浓', e:'🦋' },
+        { n:'蔓越阑珊', p:18, d:'红茶+奶油顶+蔓越莓酱，酸甜可口', e:'🍒' },
+        { n:'抹茶菩提', p:18, d:'抹茶+奶油顶+葡萄干，抹茶控必试', e:'🍵' },
+      ]},
+      { name: '☁️ 沫泡系列(清爽)', items: [
+        { n:'声声乌龙', p:16, d:'蜜桃乌龙+奶泡+胚芽，清爽回甘', e:'🍑' },
+        { n:'桂花弄', p:16, d:'桂花乌龙+奶泡，桂花香温柔', e:'🌼' },
+        { n:'筝筝纸鸢', p:16, d:'乌龙茶+奶泡，雨天神价第二杯半价', e:'🪁' },
+        { n:'烟火易冷', p:15, d:'大红袍+奶泡，炭烤烟熏风味', e:'🌫️' },
+        { n:'凤栖绿桂', p:12, d:'绿茶+茉莉，清新入魂', e:'🌿' },
+      ]},
+      { name: '🍹 其他', items: [
+        { n:'栀子生椰', p:16, d:'栀子花+椰乳，热带花香', e:'🥥' },
+        { n:'桂花琉璃', p:19, d:'桂花+柠檬+绿茶，清爽果茶', e:'🍋' },
+        { n:'书生气', p:9, d:'纯茶，极简主义', e:'📖' },
+      ]},
+    ]
+  },
+  {
+    id: 'moli', name: '茉莉奶白', emoji: '🤍', color: '#9B59B6',
+    desc: '茉莉花茶专门店，花香鲜奶茶开创者',
+    categories: [
+      { name: '🌸 茉莉系列', items: [
+        { n:'茉莉奶白', p:15, d:'茉莉龙芽+鲜牛乳，招牌经典', e:'🤍', hot:true },
+        { n:'一朵茉莉花', p:18, d:'茉莉花奶油顶+鲜牛乳，颜值担当', e:'🌸', hot:true },
+        { n:'粉茉针王', p:18, d:'高阶茉莉茶底，花香更浓郁', e:'💮' },
+        { n:'粉茉抹茶', p:21, d:'茉莉+抹茶，双重茶香', e:'🍵' },
+      ]},
+      { name: '🌿 栀子/白兰系列', items: [
+        { n:'栀子奶白', p:19, d:'栀子花+鲜牛乳，夏日必饮', e:'🌿' },
+        { n:'白兰', p:30, d:'高山茶底+奶油顶+碧根果，王牌C位', e:'🏆' },
+        { n:'白兰金萱', p:17, d:'白兰茶底+金萱乌龙', e:'🍂' },
+        { n:'一朵栀子花', p:20, d:'栀子花奶油顶版，颜值爆表', e:'💐' },
+      ]},
+      { name: '🥥 创新特调', items: [
+        { n:'开心果茉莉椰', p:20, d:'开心果+茉莉+椰乳，三香合一', e:'🥥' },
+        { n:'茉莉杨枝甘露', p:21, d:'茉莉茶底+杨枝甘露，双重经典', e:'🥭' },
+        { n:'桂花龙井', p:20, d:'桂花+龙井，中式茶韵', e:'🌼' },
+        { n:'针王葡萄', p:19, d:'针王茉莉+葡萄，花果碰撞', e:'🍇' },
+      ]},
+    ]
+  },
+  {
+    id: 'yeye', name: '爷爷不泡茶', emoji: '👴', color: '#5D4037',
+    desc: '武汉走出的新茶饮，荔枝冰酿开创者',
+    categories: [
+      { name: '🔥 招牌必喝', items: [
+        { n:'荔枝冰酿', p:15, d:'首创荔枝酒酿+奶茶，3800万杯认证', e:'🍈', hot:true },
+        { n:'茉莉奶白', p:14, d:'茉莉花茶+鲜牛乳，清香雅致', e:'🌸', hot:true },
+        { n:'桃花坞', p:15, d:'蜜桃+乌龙+鲜奶，桃花运走起', e:'🍑' },
+        { n:'桂花酒酿奶绿', p:14, d:'桂花+酒酿+茉莉奶绿', e:'🌼' },
+        { n:'重瓣玫瑰奶', p:16, d:'重瓣玫瑰+鲜牛乳，浪漫花香', e:'🌹' },
+      ]},
+      { name: '🍵 牛乳茗茶', items: [
+        { n:'栀香龙井', p:15, d:'栀子花+龙井绿茶+牛乳', e:'🍃' },
+        { n:'白桃乌龙奶', p:14, d:'白桃+乌龙茶+鲜奶', e:'🍑' },
+        { n:'山茶花乌龙', p:16, d:'山茶花+乌龙茶+牛乳', e:'🏵️' },
+      ]},
+      { name: '🍋 鲜果系列', items: [
+        { n:'暴打香水柠檬', p:13, d:'香水柠檬暴打出汁，超爽', e:'🍋' },
+        { n:'满杯草莓', p:17, d:'新鲜草莓+茉莉茶底', e:'🍓' },
+        { n:'杨枝甘露', p:16, d:'芒果+西柚+椰浆', e:'🥭' },
+      ]},
+    ]
+  },
+];
+
+// ============ STATE ============
+let cart = [];
+
+// ============ RENDER ============
+const brandNav = document.getElementById('brandNav').querySelector('.brand-nav-inner');
+const menuArea = document.getElementById('menuArea');
+
+BRANDS.forEach((brand, idx) => {
+  const tab = document.createElement('button');
+  tab.className = 'brand-tab' + (idx === 0 ? ' active' : '');
+  tab.textContent = brand.emoji + ' ' + brand.name;
+  tab.onclick = () => switchBrand(idx);
+  brandNav.appendChild(tab);
+
+  const section = document.createElement('div');
+  section.className = 'brand-section' + (idx === 0 ? ' active' : '');
+  section.id = 'brand-' + brand.id;
+  let html = `<div class="brand-title">${brand.emoji} ${brand.name}</div>`;
+  html += `<div class="brand-desc">${brand.desc}</div>`;
+  brand.categories.forEach(cat => {
+    html += `<div class="cat-title">${cat.name}</div><div class="item-grid">`;
+    cat.items.forEach(item => {
+      html += `
+        <div class="item-card" onclick="addToCart('${brand.name}', '${item.n}', ${item.p})">
+          <div class="item-emoji">${item.e}</div>
+          <div class="item-info">
+            <div class="item-name">${item.n}${item.hot ? '<span class="item-hot">爆款</span>' : ''}</div>
+            <div class="item-desc">${item.d}</div>
+            <div class="item-price-row">
+              <span class="item-price"><span class="yen">¥</span>${item.p}</span>
+              <button class="item-add" onclick="event.stopPropagation(); addToCart('${brand.name}', '${item.n}', ${item.p})">+</button>
+            </div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+  section.innerHTML = html;
+  menuArea.appendChild(section);
+});
+
+function switchBrand(idx) {
+  document.querySelectorAll('.brand-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.brand-section').forEach((s, i) => s.classList.toggle('active', i === idx));
+  document.getElementById('brand-' + BRANDS[idx].id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============ CART ============
+function addToCart(brand, name, price) {
+  const key = brand + '|' + name;
+  const existing = cart.find(c => c.key === key);
+  if (existing) { existing.qty++; } else { cart.push({ key, brand, name, price, qty: 1 }); }
+  updateCart();
+  showToast(`已添加 ${name}`, 'success');
+}
+
+function removeFromCart(key) {
+  cart = cart.filter(c => c.key !== key);
+  updateCart();
+}
+
+function changeQty(key, delta) {
+  const item = cart.find(c => c.key === key);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) { cart = cart.filter(c => c.key !== key); }
+  updateCart();
+}
+
+function updateCart() {
+  const count = cart.reduce((s, c) => s + c.qty, 0);
+  const countEl = document.getElementById('cartCount');
+  countEl.textContent = count;
+  countEl.style.display = count > 0 ? 'flex' : 'none';
+
+  const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  document.getElementById('cartTotal').textContent = '¥' + total;
+
+  const itemsEl = document.getElementById('cartItems');
+  if (cart.length === 0) {
+    itemsEl.innerHTML = '<div class="cart-empty">购物车是空的，快去点单吧~</div>';
+  } else {
+    itemsEl.innerHTML = cart.map(c => `
+      <div class="cart-item">
+        <div style="flex:1;min-width:0">
+          <div class="cart-item-name">${c.name}</div>
+          <div class="cart-item-brand">${c.brand}</div>
+        </div>
+        <div class="cart-qty">
+          <button onclick="changeQty('${c.key}', -1)">−</button>
+          <span>${c.qty}</span>
+          <button onclick="changeQty('${c.key}', 1)">+</button>
+        </div>
+        <div class="cart-item-price">¥${(c.price * c.qty).toFixed(0)}</div>
+        <button class="cart-item-del" onclick="removeFromCart('${c.key}')">🗑</button>
+      </div>
+    `).join('');
+  }
+}
+
+function toggleCart() {
+  const open = !document.getElementById('cartSidebar').classList.contains('open');
+  document.getElementById('cartSidebar').classList.toggle('open', open);
+  document.getElementById('cartBg').classList.toggle('open', open);
+}
+
+// ============ CHECKOUT ============
+function openCheckout() {
+  if (cart.length === 0) { showToast('购物车是空的', 'error'); return; }
+  document.getElementById('checkoutModal').classList.add('open');
+  const summary = document.getElementById('orderSummary');
+  let html = '';
+  let total = 0;
+  cart.forEach(c => {
+    const sub = c.price * c.qty;
+    total += sub;
+    html += `<div class="line"><span>[${c.brand}] ${c.name} ×${c.qty}</span><span>¥${sub}</span></div>`;
+  });
+  html += `<div class="line total-line"><span>合计</span><span>¥${total}</span></div>`;
+  summary.innerHTML = html;
+  toggleCart();
+}
+
+function closeCheckout() {
+  document.getElementById('checkoutModal').classList.remove('open');
+}
+
+// ============ EMAIL ============
+// 使用 EmailJS 发送订单
+emailjs.init('YOUR_PUBLIC_KEY'); // 替换为你的 EmailJS Public Key
+
+async function submitOrder() {
+  const name = document.getElementById('customerName').value.trim();
+  const phone = document.getElementById('customerPhone').value.trim();
+  const note = document.getElementById('customerNote').value.trim();
+
+  if (!name || !phone) { showToast('请填写姓名和电话', 'error'); return; }
+  if (!/^1\d{10}$/.test(phone)) { showToast('请填写正确的手机号', 'error'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '发送中...';
+
+  // 构建订单内容
+  let orderText = '【小羊专属点餐订单】\n\n';
+  orderText += `姓名：${name}\n电话：${phone}\n`;
+  if (note) orderText += `备注：${note}\n`;
+  orderText += '\n--- 订单明细 ---\n';
+  let total = 0;
+  cart.forEach(c => {
+    const sub = c.price * c.qty;
+    total += sub;
+    orderText += `[${c.brand}] ${c.name} ×${c.qty}  ¥${sub}\n`;
+  });
+  orderText += `\n合计：¥${total}\n`;
+  orderText += `\n时间：${new Date().toLocaleString()}`;
+
+  // 备用：复制到剪贴板 + 打开邮箱
+  try {
+    await navigator.clipboard.writeText(orderText);
+    showToast('✅ 订单已复制！请粘贴到邮件发送至 2801484617@qq.com', 'success');
+    setTimeout(() => {
+      window.open('mailto:2801484617@qq.com?subject=奶茶订单 - ' + name + '&body=' + encodeURIComponent(orderText));
+    }, 500);
+    cart = [];
+    updateCart();
+    closeCheckout();
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerPhone').value = '';
+    document.getElementById('customerNote').value = '';
+  } catch(e) {
+    showToast('请手动发送订单到 2801484617@qq.com', 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📧 提交订单';
+}
+
+// ============ TOAST ============
+function showToast(msg, type) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+// ============ INIT ============
+updateCart();
+</script>
+</body>
+</html>
